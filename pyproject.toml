@@ -1,0 +1,18 @@
+[project]
+name = "telegram-digestion"
+version = "0.1.0"
+description = "Telegram digest generator — reads channels via userbot, summarizes with LLM, delivers via bot"
+requires-python = ">=3.12"
+dependencies = [
+    "telethon>=1.37",
+    "aiogram>=3.16",
+    "apscheduler>=3.10,<4",
+    "aiosqlite>=0.20",
+    "httpx>=0.28",
+    "pydantic-settings>=2.7",
+    "cryptg>=0.4",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_started
+        required: false
+
+  ollama:
+    image: ollama/ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    profiles:
+      - local-llm
+
+volumes:
+  ollama_data:
