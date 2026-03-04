@@ -183,12 +183,20 @@ async def mark_digested(message_ids: list[int]) -> None:
     await db.commit()
 
 
-async def get_max_msg_id(source_id: int) -> int:
+async def get_max_msg_id(source_id: int, chat_id: int | None = None) -> int:
     db = await get_db()
-    cursor = await db.execute(
-        "SELECT COALESCE(MAX(telegram_msg_id), 0) as max_id FROM messages WHERE source_id=?",
-        (source_id,),
-    )
+    if chat_id is not None:
+        cursor = await db.execute(
+            "SELECT COALESCE(MAX(telegram_msg_id), 0) as max_id "
+            "FROM messages WHERE source_id=? AND chat_id=?",
+            (source_id, chat_id),
+        )
+    else:
+        cursor = await db.execute(
+            "SELECT COALESCE(MAX(telegram_msg_id), 0) as max_id "
+            "FROM messages WHERE source_id=?",
+            (source_id,),
+        )
     row = await cursor.fetchone()
     return row["max_id"]
 

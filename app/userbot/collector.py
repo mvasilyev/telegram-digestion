@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 
 async def collect_source(client: TelegramClient, source: Source) -> int:
-    """Collect only unread messages for a source. Returns count of new messages."""
+    """Collect new messages for a source. Returns count of new messages."""
     log.info("Collecting from '%s' [%s] telegram_id=%d", source.title, source.source_type, source.telegram_id)
     count = 0
 
@@ -20,12 +20,12 @@ async def collect_source(client: TelegramClient, source: Source) -> int:
         log.info("Folder '%s' resolved to %d peers", source.title, len(peers))
         for peer in peers:
             peer_title = getattr(peer, "title", None) or getattr(peer, "first_name", str(peer.id))
-            n = await _fetch_unread(client, source, peer.id)
+            n = await _fetch_new(client, source, peer.id)
             log.info("  peer '%s' (%d): %d new messages", peer_title, peer.id, n)
             count += n
             await asyncio.sleep(1)
     else:
-        count = await _fetch_unread(
+        count = await _fetch_new(
             client, source, source.telegram_id,
             topic_id=source.topic_id,
         )
@@ -34,34 +34,18 @@ async def collect_source(client: TelegramClient, source: Source) -> int:
     return count
 
 
-async def _fetch_unread(
+async def _fetch_new(
     client: TelegramClient,
     source: Source,
     chat_id: int,
     topic_id: int | None = None,
 ) -> int:
-    """Fetch only unread messages from a chat."""
+    """Fetch messages newer than the last collected one."""
     count = 0
     try:
-        # Get dialog to find unread count and read offset
-        dialog = None
-        async for d in client.iter_dialogs():
-            if d.entity and d.entity.id == chat_id:
-                dialog = d
-                break
+        min_id = await repo.get_max_msg_id(source.id, chat_id)
 
-        if dialog is None:
-            log.warning("Dialog not found for chat_id=%d", chat_id)
-            return 0
-
-        unread = dialog.unread_count
-        if unread == 0:
-            log.info("No unread messages in chat %d", chat_id)
-            return 0
-
-        log.info("Chat %d has %d unread messages", chat_id, unread)
-
-        kwargs = {"limit": unread}
+        kwargs: dict = {"min_id": min_id}
         if topic_id:
             kwargs["reply_to"] = topic_id
 
