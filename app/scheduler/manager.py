@@ -21,8 +21,16 @@ async def _collect_job() -> None:
 
     client = get_userbot()
     if not client.is_connected():
-        log.warning("Userbot not connected, skipping collection")
-        return
+        log.warning("Userbot not connected, attempting reconnect...")
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                log.error("Userbot reconnected but not authorized, skipping collection")
+                return
+            log.info("Userbot reconnected successfully")
+        except Exception:
+            log.exception("Userbot reconnect failed, skipping collection")
+            return
 
     from app.userbot.collector import collect_all
     results = await collect_all(client)
