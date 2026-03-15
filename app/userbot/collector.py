@@ -45,6 +45,20 @@ async def _fetch_new(
     try:
         min_id = await repo.get_max_msg_id(source.id, chat_id)
 
+        # First collection: start from first unread message, not from the beginning
+        if min_id == 0:
+            try:
+                dialog = await client.get_entity(chat_id)
+                full = await client(
+                    __import__("telethon.tl.functions.messages", fromlist=["GetPeerDialogsRequest"])
+                    .GetPeerDialogsRequest(peers=[dialog])
+                )
+                if full.dialogs:
+                    min_id = full.dialogs[0].read_inbox_max_id
+                    log.info("First collection for chat %d: starting from read_inbox_max_id=%d", chat_id, min_id)
+            except Exception:
+                log.warning("Could not get read position for chat %d, collecting from start", chat_id)
+
         kwargs: dict = {"min_id": min_id}
         if topic_id:
             kwargs["reply_to"] = topic_id
