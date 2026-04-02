@@ -81,14 +81,31 @@ async def _digest_job(source_id: int) -> None:
 def _parse_cron(expr: str, timezone: str | None = None) -> CronTrigger:
     tz = ZoneInfo(timezone or settings.timezone)
     parts = expr.split()
+    # Convert crontab day_of_week (0=Sun) to APScheduler (0=Mon)
+    dow = _convert_dow(parts[4])
     return CronTrigger(
         minute=parts[0],
         hour=parts[1],
         day=parts[2],
         month=parts[3],
-        day_of_week=parts[4],
+        day_of_week=dow,
         timezone=tz,
     )
+
+
+def _convert_dow(dow: str) -> str:
+    """Convert crontab day_of_week (0/7=Sun) to APScheduler (0=Mon)."""
+    if dow == "*":
+        return dow
+    cron_to_aps = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6}
+
+    def convert_part(part: str) -> str:
+        if "-" in part:
+            start, end = part.split("-", 1)
+            return f"{cron_to_aps[int(start)]}-{cron_to_aps[int(end)]}"
+        return str(cron_to_aps[int(part)])
+
+    return ",".join(convert_part(p) for p in dow.split(","))
 
 
 async def setup_scheduler() -> AsyncIOScheduler:
